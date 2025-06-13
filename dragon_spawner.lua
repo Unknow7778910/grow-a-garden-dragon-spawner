@@ -1,67 +1,80 @@
--- dragon_spawner.lua
-
+local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local player = game.Players.LocalPlayer
-local root = player.Character:WaitForChild("HumanoidRootPart")
+local RunService = game:GetService("RunService")
 
--- Remove existing dragon
-if workspace:FindFirstChild("HugeRedDragon") then
-    workspace.HugeRedDragon:Destroy()
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+
+-- Clean old dragons
+for _,v in pairs(workspace:GetChildren()) do
+    if v.Name:match("HugeRedDragon") then v:Destroy() end
 end
 
--- Create dragon part
-local dragon = Instance.new("Part")
+-- Build dragon model
+local dragon = Instance.new("Model", workspace)
 dragon.Name = "HugeRedDragon"
-dragon.Size = Vector3.new(8, 8, 12)
-dragon.Color = Color3.fromRGB(255, 0, 0)
-dragon.Material = Enum.Material.Neon
-dragon.Anchored = true
-dragon.CFrame = root.CFrame * CFrame.new(5, 0, -10)
-dragon.Transparency = 1
-dragon.Parent = workspace
 
--- Glow effect
-local glow = Instance.new("PointLight", dragon)
-glow.Brightness = 10
-glow.Range = 20
-glow.Color = Color3.fromRGB(255, 60, 0)
+local body = Instance.new("Part")
+body.Name = "Body"
+body.Size = Vector3.new(8,5,12)
+body.Anchored = true
+body.Material = Enum.Material.Neon
+body.Color = Color3.fromRGB(255,0,0)
+body.CFrame = root.CFrame * CFrame.new(0,10,-5)
+body.Parent = dragon
 
--- Fire particles
-local fire = Instance.new("ParticleEmitter")
+-- Fire & glow
+local fire = Instance.new("ParticleEmitter", body)
 fire.Texture = "rbxassetid://243660564"
-fire.Color = ColorSequence.new(Color3.fromRGB(255,150,0), Color3.fromRGB(255,0,0))
-fire.Rate = 100
-fire.Lifetime = NumberRange.new(1, 1.5)
-fire.Speed = NumberRange.new(2, 4)
-fire.Parent = dragon
+fire.Color = ColorSequence.new(Color3.new(1,0.6,0), Color3.new(1,0,0))
+fire.Rate = 200
+fire.Lifetime = NumberRange.new(0.5,1)
+fire.Speed = NumberRange.new(2,4)
 
--- Fade-in and rise
-local tweenIn = TweenService:Create(
-    dragon,
-    TweenInfo.new(1.5, Enum.EasingStyle.Bounce),
-    { Transparency = 0, CFrame = dragon.CFrame * CFrame.new(0, 5, 0) }
-)
-tweenIn:Play()
+local glow = Instance.new("PointLight", body)
+glow.Color = Color3.fromRGB(255,80,0)
+glow.Brightness = 6
+glow.Range = 15
 
--- Flying animation loop
-tweenIn.Completed:Connect(function()
-    spawn(function()
-        while dragon and dragon.Parent do
-            local t1 = TweenService:Create(
-                dragon,
-                TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-                { CFrame = dragon.CFrame * CFrame.Angles(0, math.rad(20), 0) * CFrame.new(0, 2, 0) }
-            )
-            t1:Play()
-            t1.Completed:Wait()
+-- Roar sound
+local sound = Instance.new("Sound", body)
+sound.SoundId = "rbxassetid://1837635124"  -- Dragon roar sound
+sound.Volume = 2
+sound.Looped = false
+sound:Play()
 
-            local t2 = TweenService:Create(
-                dragon,
-                TweenInfo.new(2, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut),
-                { CFrame = dragon.CFrame * CFrame.Angles(0, math.rad(-20), 0) * CFrame.new(0, -2, 0) }
-            )
-            t2:Play()
-            t2.Completed:Wait()
-        end
-    end)
+-- Fade-in animation
+body.Transparency = 1
+local tweenInfo = TweenInfo.new(1.2, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+TweenService:Create(body, tweenInfo, {
+    Transparency = 0,
+    CFrame = body.CFrame * CFrame.new(0,3,0)
+}):Play()
+
+-- Flying loop
+spawn(function()
+    while dragon.Parent do
+        TweenService:Create(body, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+            CFrame = body.CFrame * CFrame.Angles(0, math.rad(45), 0) * CFrame.new(0,3,0)
+        }):Play()
+        wait(2)
+    end
 end)
+
+-- Spawn/despawn button
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+local btn = Instance.new("TextButton", gui)
+btn.Size = UDim2.new(0,150,0,50)
+btn.Position = UDim2.new(0.05,0,0.8,0)
+btn.Text = "Toggle Dragon"
+
+btn.MouseButton1Click:Connect(function()
+    if dragon.Parent then
+        dragon:Destroy()
+    else
+        dragon.Parent = workspace
+    end
+end)
+
+print("🔥 HugeRedDragon script loaded.")
